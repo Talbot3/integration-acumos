@@ -1,0 +1,159 @@
+apiVersion: apps/v1
+# ===============LICENSE_START=======================================================
+# Acumos Apache-2.0
+# ===================================================================================
+# Copyright (C) 2017-2018 AT&T Intellectual Property & Tech Mahindra. All rights reserved.
+# ===================================================================================
+# This Acumos software file is distributed by AT&T and Tech Mahindra
+# under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===============LICENSE_END=========================================================
+
+# What this is: kubernetes template for Acumos federation deployment
+# How to use:
+
+kind: Deployment
+metadata:
+  namespace: <ACUMOS_NAMESPACE>
+  name: federation
+  labels:
+    app: federation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: federation
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: federation
+        <ACUMOS_SERVICE_LABEL_KEY>: <ACUMOS_FEDERATION_SERVICE_LABEL>
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: <ACUMOS_SERVICE_LABEL_KEY>
+                operator: NotIn
+                values:
+                - <ACUMOS_FEDERATION_SERVICE_LABEL>
+            topologyKey: "kubernetes.io/node"
+      imagePullSecrets:
+      - name: acumos-registry
+      containers:
+      - name: federation
+        image: <FEDERATION_IMAGE>
+        securityContext:
+          privileged: <ACUMOS_PRIVILEGED_ENABLE>
+        command: ["/bin/sh", "-c"]
+        args:
+        - set -x;
+          cd maven;
+          java $JAVA_OPTS -Dhttp.proxyHost=$ACUMOS_HTTP_PROXY_HOST -Dhttp.proxyPort=$ACUMOS_HTTP_PROXY_PORT -Dhttp.nonProxyHosts=$ACUMOS_HTTP_NON_PROXY_HOSTS -Dhttps.proxyHost=$ACUMOS_HTTP_PROXY_HOST -Dhttps.proxyPort=$ACUMOS_HTTP_PROXY_PORT -Dhttps.nonProxyHosts=$ACUMOS_HTTP_NON_PROXY_HOSTS -Djava.security.egd=file:/dev/./urandom -jar *.jar
+        env:
+        - name: ACUMOS_HTTP_NON_PROXY_HOSTS
+          value: "<ACUMOS_HTTP_NON_PROXY_HOSTS>|cds-service|sv-scanning-service|lum-service"
+        - name: ACUMOS_HTTP_PROXY_HOST
+          value: "<ACUMOS_HTTP_PROXY_HOST>"
+        - name: ACUMOS_HTTP_PROXY_PORT
+          value: "<ACUMOS_HTTP_PROXY_PORT>"
+        - name: JAVA_OPTS
+          value: "-Xms256m -Xmx2g"
+        - name: SPRING_APPLICATION_JSON
+          value: '{
+            "logging": {
+              "level": {
+                "root": "INFO"
+              }
+            },
+            "federation": {
+              "instance": "gateway",
+              "instance.name": "<ACUMOS_FEDERATION_DOMAIN>",
+              "operator": "<ACUMOS_OPERATOR_ID>",
+              "address": "0.0.0.0",
+              "server": {
+                "port": 9084
+              },
+              "ssl": {
+                "key-store": "/app/certs/<ACUMOS_KEYSTORE_P12>",
+                "key-store-password": "<ACUMOS_KEYSTORE_PASSWORD>",
+                "key-store-type": "PKCS12",
+                "key-password": "<ACUMOS_CERT_KEY_PASSWORD>",
+                "trust-store": "/app/certs/<ACUMOS_TRUSTSTORE>",
+                "trust-store-password": "<ACUMOS_TRUSTSTORE_PASSWORD>"
+              }
+            },
+            "docker": {
+              "host": "tcp://<ACUMOS_DOCKER_API_HOST>:<ACUMOS_DOCKER_API_PORT>",
+              "registryURL": "<ACUMOS_DOCKER_REGISTRY_HOST>:<ACUMOS_DOCKER_MODEL_PORT>",
+              "registryUsername": "<ACUMOS_DOCKER_REGISTRY_USER>",
+              "registryPassword": "<ACUMOS_DOCKER_REGISTRY_PASSWORD>",
+              "registryEmail": "<ACUMOS_ADMIN_EMAIL>"
+            },
+            "local": {
+              "address": "0.0.0.0",
+              "server": {
+                "port": "9011"
+              },
+              "ssl": {
+                "key-store": "/app/certs/<ACUMOS_KEYSTORE_P12>",
+                "key-store-password": "<ACUMOS_KEYSTORE_PASSWORD>",
+                "key-store-type": "PKCS12",
+                "key-password": "<ACUMOS_CERT_KEY_PASSWORD>",
+                "trust-store": "/app/certs/<ACUMOS_TRUSTSTORE>",
+                "trust-store-password": "<ACUMOS_TRUSTSTORE_PASSWORD>"
+              }
+            },
+            "nexus": {
+              "url": "http://<ACUMOS_NEXUS_HOST>:<ACUMOS_NEXUS_API_PORT>/<ACUMOS_NEXUS_MAVEN_REPO_PATH>/<ACUMOS_NEXUS_MAVEN_REPO>/",
+              "proxy": "",
+              "password": "<ACUMOS_NEXUS_RW_USER_PASSWORD>",
+              "username": "<ACUMOS_NEXUS_RW_USER>",
+              "groupid": "<ACUMOS_NEXUS_GROUP>"
+            },
+            "peer": {
+              "jobchecker": {
+                "interval": 300
+              }
+            },
+            "cdms": {
+              "client": {
+                "url": "http://<ACUMOS_CDS_HOST>:<ACUMOS_CDS_PORT>/ccds",
+                "username": "<ACUMOS_CDS_USER>",
+                "password": "<ACUMOS_CDS_PASSWORD>"
+              }
+            },
+            "license-manager" : {
+              "url" : "http://lum-service:8080"
+            },
+            "verification": {
+              "url" : "http://sv-scanning-service:9082"
+            }
+          }'
+        ports:
+        - containerPort: 9084
+        - containerPort: 9011
+        volumeMounts:
+        - mountPath: /maven/logs
+          name: logs
+        - mountPath: /app/certs
+          name: certs-volume
+      restartPolicy: Always
+      volumes:
+      - name: logs
+        persistentVolumeClaim:
+          claimName: <ACUMOS_FEDERATION_SERVICE_LABEL>
+      - name: certs-volume
+        configMap:
+          name: acumos-certs

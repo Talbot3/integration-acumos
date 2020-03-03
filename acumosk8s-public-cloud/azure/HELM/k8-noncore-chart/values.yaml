@@ -1,0 +1,67 @@
+# ===============LICENSE_START=======================================================
+# Acumos Apache-2.0
+# ===================================================================================
+# Copyright (C) 2019 AT&T Intellectual Property & Tech Mahindra. All rights reserved.
+# ===================================================================================
+# This Acumos software file is distributed by AT&T and Tech Mahindra
+# under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===============LICENSE_END=========================================================
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+appVersion: "1.0.0"
+
+namespace: "acumos-test"
+clusterName: "k8-cluster-noncore-components"
+
+docker:
+  image:
+    repository: "docker"
+    tag: "17.06.0-dind"
+
+# Ports
+acumosMariaDbPort: "3306"
+acumosMariaDbRootPassword: "XXXXXXXX"
+acumosOnboardingAppPort: "8090"
+acumosFederationGatewayPort: "9084"
+acumosFederationLocalPort: "9884"
+acumosKongPostgresPort: "5432"
+acumosKongAdminPort: "8001"
+acumosKongProxyPort: "8000"
+acumosKongSslPort: "8443"
+acumosKongAdmSslPort: "8444"
+acumosNexusPort: "8001"
+acumosNexusEndpointPort: "8081"
+acumosProxyPort: "3128"
+acumosDockerPort: "2375"
+acumosDockerPlatformPort: "8002"
+
+#Nexus
+acumosDockerHost: "acumos-docker-service"
+acumosNexusService: "acumos-nexus-service"
+acumosNexusUsername: "acumos-k8-user-rw"
+acumosNexusPassword: "XXXXXXXXXXx"
+acumosProxy: "acumos-proxy"
+acumosDockerUsername: "docker"
+acumosDockerPassword: "XXXXXXXXXXXXX"
+acumosDockerProxyHost: "acumos-docker-proxy-service"
+acumosDockerProxyPort: "8883"
+
+#Kong
+acumosKongPostgresUser: "kong"
+acumosKongPostgresPassword: "XXXXXXXXX"
+acumosKongPostgresDB: "kong"
+acumosKongPGPassword: "XXXXXXXX"
+
+#PVC
+acumosMariaDbPvcStorage: "1Gi"
+acumosPVCStorage: "2Gi"
+acumosNexusPVCStorage: "50Gi"

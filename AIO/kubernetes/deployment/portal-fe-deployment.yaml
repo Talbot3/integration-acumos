@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+# ===============LICENSE_START=======================================================
+# Acumos Apache-2.0
+# ===================================================================================
+# Copyright (C) 2017-2018 AT&T Intellectual Property & Tech Mahindra. All rights reserved.
+# ===================================================================================
+# This Acumos software file is distributed by AT&T and Tech Mahindra
+# under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===============LICENSE_END=========================================================
+
+# What this is: kubernetes template for Acumos portal-fe deployment
+# How to use:
+
+kind: Deployment
+metadata:
+  namespace: <ACUMOS_NAMESPACE>
+  name: portal-fe
+  labels:
+    app: portal-fe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: portal-fe
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: portal-fe
+        <ACUMOS_SERVICE_LABEL_KEY>: <ACUMOS_PORTAL_SERVICE_LABEL>
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: <ACUMOS_SERVICE_LABEL_KEY>
+                operator: NotIn
+                values:
+                - <ACUMOS_PORTAL_SERVICE_LABEL>
+            topologyKey: "kubernetes.io/node"
+      imagePullSecrets:
+      - name: acumos-registry
+      containers:
+      - name: portal-fe
+        image: <PORTAL_FE_IMAGE>
+        command: ["/bin/sh", "-c"]
+        args:
+        - set -x;
+          cd maven;
+          java $JAVA_OPTS -Dhttp.proxyHost=$ACUMOS_HTTP_PROXY_HOST -Dhttp.proxyPort=$ACUMOS_HTTP_PROXY_PORT -Dhttp.nonProxyHosts=$ACUMOS_HTTP_NON_PROXY_HOSTS -Dhttps.proxyHost=$ACUMOS_HTTP_PROXY_HOST -Dhttps.proxyPort=$ACUMOS_HTTP_PROXY_PORT -Dhttps.nonProxyHosts=$ACUMOS_HTTP_NON_PROXY_HOSTS -Djava.security.egd=file:/dev/./urandom -jar *.war
+        env:
+        - name: ACUMOS_HTTP_NON_PROXY_HOSTS
+          value: "<ACUMOS_HTTP_NON_PROXY_HOSTS>|portal-be-service|mlwb-home-webcomponent-service|dsce-service|azure-client-service|openstack-client-service|kubernetes-client-service"
+        - name: ACUMOS_HTTP_PROXY_HOST
+          value: "<ACUMOS_HTTP_PROXY_HOST>"
+        - name: ACUMOS_HTTP_PROXY_PORT
+          value: "<ACUMOS_HTTP_PROXY_PORT>"
+        - name: JAVA_OPTS
+          value: "-Xms512m -Xmx1024m"
+        - name: SPRING_APPLICATION_JSON
+          value: '{
+            "logging": {
+              "level": {
+                "root": "INFO"
+              }
+            },
+            "server": {
+              "port": 8085
+            },
+            "qanda": {
+              "url": "https://stackoverflow.com/questions/tagged/acumos"
+            },
+            "zuul": {
+              "routes": {
+                "api": {
+                  "url": "http://portal-be-service:8083"
+                },
+                "dsce": {
+                  "url": "http://dsce-service:8088"
+                },
+                "cmnt": {
+                  "url": "http://delete-me"
+                },
+                "workbench" : {
+                  "path" : "/workbench/**",
+                  "url" : "http://mlwb-home-webcomponent-service:9082",
+			                    "sensitiveHeaders" : ""
+                },
+                "azure": {
+                  "url": "http://azure-client-service:9081"
+                },
+                "openstack" : {
+                  "path": "/openstack/**",
+                  "url": "http://openstack-client-service:8007",
+                  "stripPrefix": "false",
+                  "sensitiveHeaders": ""
+                },
+                "package": {
+                  "path": "/package/**",
+                  "url": "http://kubernetes-client-service:8082",
+                  "stripPrefix": "true",
+                  "sensitiveHeaders": ""
+                }
+              },
+              "host": {
+                "connect-timeout-millis": 300000,
+                "socket-timeout-millis": 300000
+              }
+            },
+            "spring": {
+              "servlet": {
+                "multipart": {
+                  "max-file-size": -1,
+                  "max-request-size": -1
+                }
+              }
+            }
+          }'
+        ports:
+        - containerPort: 8085
+        volumeMounts:
+        - mountPath: /maven/logs
+          name: logs
+      restartPolicy: Always
+      volumes:
+      - name: logs
+        persistentVolumeClaim:
+         claimName: <ACUMOS_PORTAL_SERVICE_LABEL>

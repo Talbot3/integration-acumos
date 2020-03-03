@@ -1,0 +1,54 @@
+# ===============LICENSE_START=======================================================
+# Acumos Apache-2.0
+# ===================================================================================
+# Copyright (C) 2019 AT&T Intellectual Property & Tech Mahindra. All rights reserved.
+# ===================================================================================
+# This Acumos software file is distributed by AT&T and Tech Mahindra
+# under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===============LICENSE_END=========================================================
+#
+# What this is: values file for deploying the Jenkins helm chart
+
+namespaceOverride: <NAMESPACE>
+master:
+  image: <ACUMOS_JENKINS_IMAGE>
+  usePodSecurityContext: true
+  runAsUser: <ACUMOS_JENKINS_RUNASUSER>
+  fsGroup: <ACUMOS_JENKINS_RUNASUSER>
+  adminPassword: <ACUMOS_JENKINS_PASSWORD>
+  serviceType: ClusterIP
+  jenkinsUriPrefix: "/<ACUMOS_JENKINS_API_CONTEXT_PATH>/"
+  numExecutors: 10
+  overwriteConfig: false
+  overwritePlugins: false
+  overwriteJobs: false
+  installPlugins: []
+  persistence:
+    enabled: true
+    size: <ACUMOS_JENKINS_PV_SIZE>
+  useSecurity: false
+  hostAliases:
+    - ip: "<HOST_IP>"
+      hostnames:
+      - "<K8S_INGRESS_DOMAIN>"
+  csrf:
+    defaultCrumbIssuer:
+      enabled: false
+  containerEnv:
+    - name: HTTP_PROXY
+      value: "<HTTP_PROXY>"
+    - name: HTTPS_PROXY
+      value: "<HTTPS_PROXY>"
+    - name: NO_PROXY
+      value: "127.0.0.1,localhost,.svc.cluster.local,cds-service,sv-scanning-service,<ACUMOS_NEXUS_HOST>"
+  podAnnotations:
+    openshift.io/scc: privileged

@@ -1,0 +1,147 @@
+apiVersion: apps/v1
+# ===============LICENSE_START=======================================================
+# Acumos Apache-2.0
+# ===================================================================================
+# Copyright (C) 2017-2018 AT&T Intellectual Property & Tech Mahindra. All rights reserved.
+# ===================================================================================
+# This Acumos software file is distributed by AT&T and Tech Mahindra
+# under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===============LICENSE_END=========================================================
+
+# What this is: kubernetes template for Acumos deployment-client deployment
+# How to use:
+
+kind: Deployment
+metadata:
+  namespace: <ACUMOS_NAMESPACE>
+  name: deployment-client
+  labels:
+    app: deployment-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deployment-client
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: deployment-client
+        <ACUMOS_SERVICE_LABEL_KEY>: <ACUMOS_DEPLOYMENT_CLIENT_SERVICE_LABEL>
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: <ACUMOS_SERVICE_LABEL_KEY>
+                operator: NotIn
+                values:
+                - <ACUMOS_DEPLOYMENT_CLIENT_SERVICE_LABEL>
+            topologyKey: "kubernetes.io/node"
+      imagePullSecrets:
+      - name: acumos-registry
+      containers:
+      - name: deployment-client
+        image: <DEPLOYMENT_CLIENT_IMAGE>
+        command: ["/bin/sh", "-c"]
+        args:
+        - set -x;
+          cd maven;
+          java $JAVA_OPTS -Dhttp.proxyHost=$ACUMOS_HTTP_PROXY_HOST -Dhttp.proxyPort=$ACUMOS_HTTP_PROXY_PORT -Dhttp.nonProxyHosts=$ACUMOS_HTTP_NON_PROXY_HOSTS -Dhttps.proxyHost=$ACUMOS_HTTP_PROXY_HOST -Dhttps.proxyPort=$ACUMOS_HTTP_PROXY_PORT -Dhttps.nonProxyHosts=$ACUMOS_HTTP_NON_PROXY_HOSTS -Djava.security.egd=file:/dev/./urandom -jar *.jar
+        env:
+        - name: ACUMOS_HTTP_NON_PROXY_HOSTS
+          value: "<ACUMOS_HTTP_NON_PROXY_HOSTS>|cds-service|<ACUMOS_JENKINS_API_HOST>"
+        - name: ACUMOS_HTTP_PROXY_HOST
+          value: "<ACUMOS_HTTP_PROXY_HOST>"
+        - name: ACUMOS_HTTP_PROXY_PORT
+          value: "<ACUMOS_HTTP_PROXY_PORT>"
+        - name: JAVA_OPTS
+          value: "-Xms128m -Xmx512m"
+        - name: SPRING_APPLICATION_JSON
+          value: '{
+            "logging": {
+              "level": {
+                "root": "INFO"
+              }
+            },
+            "server": {
+              "port": 8337
+            },
+            "siteConfig": "[
+              { \"name\": \"cluster1\" }
+            ]",
+            "jenkins": {
+              "url": "<ACUMOS_JENKINS_API_URL>",
+              "user": "<ACUMOS_JENKINS_USER>",
+              "password": "<ACUMOS_JENKINS_PASSWORD>",
+              "job": {
+                "simple": "<ACUMOS_JENKINS_SIMPLE_SOLUTION_DEPLOY_JOB>",
+                "composite": "<ACUMOS_JENKINS_COMPOSITE_SOLUTION_DEPLOY_JOB>",
+                "nifi": "<ACUMOS_JENKINS_NIFI_DEPLOY_JOB>"
+              }
+            },
+            "api": {
+              "baseUrl": "https://<ACUMOS_DOMAIN>/deployment/"
+            },
+            "kube" : {
+              "incrementPort": "8557",
+              "singleModelPort": "8556",
+              "folderPath": "config/jobs/solution_deploy/",
+              "templateYmlDirectory": "config/jobs/solution_deploy/templates/",
+              "singleNodePort": "30333",
+              "singleTargetPort": "3330",
+              "dataBrokerModelPort": "8556",
+              "dataBrokerNodePort": "30556",
+              "dataBrokerTargetPort": "8556",
+              "mlTargetPort": "3330",
+              "nginxImageName": "nginx:latest"
+            },
+            "dockerRegistry": {
+              "url": "https://<ACUMOS_DOCKER_PROXY_HOST>:<ACUMOS_DOCKER_PROXY_PORT>/",
+              "username": "<ACUMOS_DOCKER_PROXY_USERNAME>",
+              "password": "<ACUMOS_DOCKER_PROXY_PASSWORD>"
+            },
+            "blueprint": {
+              "ImageName": "<BLUEPRINT_ORCHESTRATOR_IMAGE>",
+              "name": "blueprint-orchestrator",
+              "port": "8555",
+              "nodePort": "30555"
+            },
+            "nexus": {
+              "url": "http://<ACUMOS_NEXUS_HOST>:<ACUMOS_NEXUS_API_PORT>/<ACUMOS_NEXUS_MAVEN_REPO_PATH>/<ACUMOS_NEXUS_MAVEN_REPO>/",
+              "password": "<ACUMOS_NEXUS_RW_USER_PASSWORD>",
+              "username": "<ACUMOS_NEXUS_RW_USER>",
+              "groupid": "<ACUMOS_NEXUS_GROUP>"
+            },
+            "cmndatasvc": {
+              "cmndatasvcendpointurl": "http://<ACUMOS_CDS_HOST>:<ACUMOS_CDS_PORT>/ccds",
+              "cmndatasvcuser": "<ACUMOS_CDS_USER>",
+              "cmndatasvcpwd": "<ACUMOS_CDS_PASSWORD>"
+            },
+            "logstash": {
+              "host": "<ACUMOS_ELK_HOST>",
+              "ip": "<ACUMOS_ELK_HOST_IP>",
+              "port": "<ACUMOS_ELK_LOGSTASH_PORT>"
+            }
+          }'
+        ports:
+        - containerPort: 8337
+        volumeMounts:
+        - mountPath: /maven/logs
+          name: logs
+      restartPolicy: Always
+      volumes:
+      - name: logs
+        persistentVolumeClaim:
+         claimName: <ACUMOS_DEPLOYMENT_CLIENT_SERVICE_LABEL>

@@ -1,0 +1,118 @@
+version: '3.2'
+# ===============LICENSE_START=======================================================
+# Acumos Apache-2.0
+# ===================================================================================
+# Copyright (C) 2017-2018 AT&T Intellectual Property & Tech Mahindra. All rights reserved.
+# ===================================================================================
+# This Acumos software file is distributed by AT&T and Tech Mahindra
+# under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===============LICENSE_END=========================================================
+
+# docker-compose for microservice-generation
+services:
+  msg-service:
+    image: ${MICROSERVICE_GENERATION_IMAGE}
+    environment:
+      SPRING_APPLICATION_JSON: '{
+        "logging": {
+          "level": {
+            "root": "INFO"
+          }
+        },
+        "server":{
+            "port": 8336,
+            "servlet": {
+               "context-path": "/microservice-generation"
+            }
+        },
+        "docker": {
+            "host": "${ACUMOS_DOCKER_API_HOST}",
+            "port": ${ACUMOS_DOCKER_API_PORT},
+            "config": "/docker_host/.docker",
+            "registry":{
+                "url": "http://${ACUMOS_DOCKER_REGISTRY_HOST}:${ACUMOS_DOCKER_MODEL_PORT}/",
+                "username": "${ACUMOS_DOCKER_REGISTRY_USER}",
+                "password": "${ACUMOS_DOCKER_REGISTRY_PASSWORD}",
+                "email": "${ACUMOS_ADMIN_EMAIL}"
+            },
+            "tls": {
+                "verify": "false"
+            },
+            "api": {
+                "version": "1.23"
+            },
+            "imagetag": {
+                "prefix": "${ACUMOS_DOCKER_REGISTRY_HOST}:${ACUMOS_DOCKER_MODEL_PORT}${ACUMOS_DOCKER_IMAGETAG_PREFIX}"
+            },
+            "max_total_connections": "1",
+            "max_per_route_connections": "1"
+        },
+        "http_proxy": "\"${ACUMOS_HTTP_PROXY}\"",
+        "nexus": {
+            "nexusEndPointURL": "http://${ACUMOS_NEXUS_HOST}:${ACUMOS_NEXUS_API_PORT}/${ACUMOS_NEXUS_MAVEN_REPO_PATH}/${ACUMOS_NEXUS_MAVEN_REPO}/",
+            "nexusUserName": "${ACUMOS_NEXUS_RW_USER}",
+            "nexusPassword": "${ACUMOS_NEXUS_RW_USER_PASSWORD}",
+            "nexusproxy": "",
+            "nexusGroupId": "org.acumos"
+        },
+        "cmndatasvc": {
+            "cmnDataSvcEndPoinURL": "http://${ACUMOS_CDS_HOST}:${ACUMOS_CDS_PORT}/ccds",
+            "cmnDataSvcUser": "${ACUMOS_CDS_USER}",
+            "cmnDataSvcPwd": "${ACUMOS_CDS_PASSWORD}"
+        },
+        "mktPlace": {
+            "mktPlaceEndPointURL": "http://portal-be-service:8083"
+        },
+        "microService": {
+            "microServiceEndPointURL": "http://msg-service:8336",
+            "microServiceAsyncFlag": "${ACUMOS_MICROSERVICE_GENERATION_ASYNC}"
+        },
+        "requirements": {
+            "extraIndexURL": "${PYTHON_EXTRAINDEX}",
+            "trustedHost": "${PYTHON_EXTRAINDEX_HOST}"
+        },
+        "base_image": {
+            "rimage": "${ONBOARDING_BASE_IMAGE}",
+            "dockerusername": "${ACUMOS_PROJECT_NEXUS_USERNAME}",
+            "dockerpassword": "${ACUMOS_PROJECT_NEXUS_PASSWORD}"
+        },
+        "spring": {
+            "servlet": {
+                "multipart": {
+                    "max-file-size": "-1",
+                    "max-request-size": "-1"
+                }
+            }
+        },
+        "security": {
+          "verificationEnableFlag": "${ACUMOS_ENABLE_SECURITY_VERIFICATION}",
+          "verificationApiUrl": "http://sv-scanning-service:9082"
+        },
+        "modelrunnerVersion": {
+          "javaSpark": "1.0.2",
+          "H2O": "2.2.3"
+        }
+      }'
+    expose:
+       - 8336
+    volumes:
+       - type: bind
+         source: /mnt/${ACUMOS_NAMESPACE}/logs
+         target: /maven/logs
+       - type: bind
+         source: /mnt/${ACUMOS_NAMESPACE}/output
+         target: /temp/
+    logging:
+       driver: json-file
+    extra_hosts:
+       - "${ACUMOS_HOST}:${ACUMOS_HOST_IP}"
+    restart: on-failure

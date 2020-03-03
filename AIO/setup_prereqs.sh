@@ -419,7 +419,7 @@ function prepare_helm() {
   log "Ensure helm is ready"
   # helm init --client-only
   local t=0
-  wait_running helm kube-system
+  # wait_running helm kube-system
   t=0
   until helm list; do
     if [[ $t -eq $ACUMOS_SUCCESS_WAIT_TIME ]]; then
